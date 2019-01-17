@@ -1,0 +1,46 @@
+version: "2.4"
+services:
+  neo-scan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 4000:4000
+    depends_on:
+      neo-privnet:
+        condition: service_healthy
+      neo-postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+  neo-postgres:
+    image: circleci/postgres:10-alpine-ram
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    env_file:
+      - .env
+  neo-privnet:
+    image: cityofzion/neo-privatenet
+    volumes:
+      - ./scripts:/scripts:ro
+      - ${CONTRACT_FILE_LOCAL}:${CONTRACT_FILE}:ro
+    command: /scripts/run.sh
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s localhost:30333"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+#      - 20333:20333
+#      - 20334:20334
+#      - 20335:20335
+#      - 20336:20336
+      - 30333:30333
+#      - 30334:30334
+#      - 30335:30335
+#      - 30336:30336
