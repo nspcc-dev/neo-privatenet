@@ -64,9 +64,7 @@ class ImportSC:
     def isSynced(self):
         height = self.chain.Height
         headers = self.chain.HeaderHeight
-        if height == 0 or headers == 0:
-            return False
-        return ((int(100 * height / headers)) == 100) and self.wallet.IsSynced
+        return height == headers and self.wallet.IsSynced
 
     def worker(self):
         self.chain.Pause()
@@ -100,7 +98,7 @@ class ImportSC:
                     print("Deploy Invoke TX Fee: %s " % (fee.value / Fixed8.D))
                     print("-------------------------")
 
-                    while not self.isSynced or not self.wallet.IsSynced:
+                    while not self.isSynced:
                         self.show_state()
                         time.sleep(1)
                     result = InvokeContract(self.wallet, tx, Fixed8.Zero(), from_addr=from_addr)
