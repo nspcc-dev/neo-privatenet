@@ -23,7 +23,7 @@ services:
     env_file:
       - .env
   neo-privnet:
-    image: cityofzion/neo-privatenet
+    image: cityofzion/neo-privatenet:2.8.0
     volumes:
       - ./scripts:/scripts:ro
       - ${CONTRACT_FILE_LOCAL}:${CONTRACT_FILE}:ro
