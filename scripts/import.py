@@ -41,11 +41,16 @@ class ImportSC:
 
         password = to_aes_key("coz")
         self.wallet = UserWallet.Open("/neo-python/neo-privnet.wallet", password)
-        self.wallet.Rebuild()
 
-        loop = task.LoopingCall(self.wallet.ProcessBlocks)
-        self.deferred = loop.start(1)
-        self.deferred.addErrback(self.on_loopError)
+        dbloop = task.LoopingCall(self.chain.PersistBlocks)
+        dbloop_deferred = dbloop.start(.1)
+        dbloop_deferred.addErrback(self.on_loopError)
+
+        walletdb_loop = task.LoopingCall(self.wallet.ProcessBlocks)
+        self.wallet_loop_deferred = walletdb_loop.start(1)
+        self.wallet_loop_deferred.addErrback(self.on_loopError)
+
+        self.wallet.Rebuild()
 
     def on_loopError(self, err):
         print("On DB loop error! %s (%s) " % (err, self.wallet.WalletHeight))
@@ -59,6 +64,8 @@ class ImportSC:
         print("Progress: %s / %s" % (height, headers))
         print("Wallet Height: %s" % self.wallet.WalletHeight)
         print("--------------------------------------")
+        print(self.wallet.GetSyncedBalances())
+        print("--------------------------------------")
 
     @property
     def isSynced(self):
@@ -68,8 +75,7 @@ class ImportSC:
 
     def worker(self):
         self.chain.Pause()
-        print(str(self.args))
-        BuildAndRun(arguments=self.args, wallet=self.wallet)
+        BuildAndRun(self.args, wallet=self.wallet, verbose=True)
         self.chain.Resume()
 
         avm_path = self.scPath.replace('.py', '.avm')
@@ -97,26 +103,17 @@ class ImportSC:
                     print("Deploy Invoke TX GAS cost: %s " % (tx.Gas.value / Fixed8.D))
                     print("Deploy Invoke TX Fee: %s " % (fee.value / Fixed8.D))
                     print("-------------------------")
-
                     while not self.isSynced:
                         self.show_state()
                         time.sleep(1)
                     result = InvokeContract(self.wallet, tx, Fixed8.Zero(), from_addr=from_addr)
                     print("Result: ", result.ToJson(), self.isSynced)
+                    print("Result: ", tx.ToJson())
 
-                print("TX:", tx, "Results:", results)
             print("Script:", script)
-        self.twist.stop()
 
 
 def main():
-    settings.setup_privnet(True)
-    settings.set_log_smart_contract_events(True)
-
-    # Instantiate the blockchain and subscribe to notifications
-    blockchain = LevelDBBlockchain(settings.chain_leveldb_path)
-    Blockchain.RegisterBlockchain(blockchain)
-
     args = sys.argv[1:]
     args += os.getenv('CONTRACT_FILE', '').split(' ')
     args += os.getenv('CONTRACT_ARGS', '').split(' ')
@@ -126,21 +123,23 @@ def main():
         print("WARN! No smart contracts args... skip")
         return
 
-    app = ImportSC(args, blockchain, reactor)
+    settings.setup_privnet(True)
+    settings.set_log_smart_contract_events(True)
 
-    loop = task.LoopingCall(blockchain.PersistBlocks)
-    deferred = loop.start(.1)
-    deferred.addErrback(app.on_loopError)
+    # Instantiate the blockchain and subscribe to notifications
+    blockchain = LevelDBBlockchain(settings.chain_leveldb_path)
+    Blockchain.RegisterBlockchain(blockchain)
+
+    app = ImportSC(args, blockchain, reactor)
 
     # Try to set up a notification db
     if NotificationDB.instance():
         NotificationDB.instance().start()
 
-    NodeLeader.Instance().Start()
-    NodeLeader.Instance().PeerCheckLoop()
-
-    # PyAssumeType(twisted.internet.reactor, twisted.internet.selectreactor.SelectReactor)
     reactor.callInThread(app.worker)
+
+    NodeLeader.Instance().Start()
+
     reactor.run()
 
     NotificationDB.close()
