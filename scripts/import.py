@@ -83,8 +83,8 @@ class ImportSC:
 
         from_addr = None
 
+        current_height = 0
         code = LoadContract(args=self.args)
-
         # /scripts/sc.avm 0710 02 True False False
         if code:
             script = generate_deploy_script(code.Script,
@@ -109,8 +109,14 @@ class ImportSC:
                     result = InvokeContract(self.wallet, tx, Fixed8.Zero(), from_addr=from_addr)
                     print("Result: ", result.ToJson(), self.isSynced)
                     print("Result: ", tx.ToJson())
+                    current_height = self.chain.Height + 1
 
             print("Script:", script)
+        # we expect the transaction to be included in the next block:
+        while current_height > self.chain.Height:
+            self.show_state()
+            time.sleep(5)
+        self.twist.stop()
 
 
 def main():
