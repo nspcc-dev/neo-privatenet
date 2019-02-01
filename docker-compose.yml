@@ -1,7 +1,9 @@
 version: "2.4"
 services:
   neo-scan:
-    image: registry.gitlab.com/cityofzion/neo-scan/api:latest
+    # https://github.com/CityOfZion/neo-scan/pull/392
+    # https://gitlab.com/CityOfZion/neo-scan/pipelines/45714484
+    image: registry.gitlab.com/cityofzion/neo-scan/api:45714484-master
     ports:
       - 4000:4000
     depends_on:
