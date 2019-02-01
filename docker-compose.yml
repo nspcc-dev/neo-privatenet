@@ -1,9 +1,7 @@
 version: "2.4"
 services:
   neo-scan:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: registry.gitlab.com/cityofzion/neo-scan/api:latest
     ports:
       - 4000:4000
     depends_on:
@@ -11,6 +9,13 @@ services:
         condition: service_healthy
       neo-postgres:
         condition: service_healthy
+    extra_hosts:
+      # Disable outgoing connections:
+      - "min-api.cryptocompare.com:127.0.0.1"
+      - "www.cryptocompare.com:127.0.0.1"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=4000
     env_file:
       - .env
   neo-postgres:
@@ -25,6 +30,11 @@ services:
   neo-privnet:
     image: cityofzion/neo-privatenet:2.8.0
     volumes:
+      - ./protocol.json:/opt/node1/neo-cli/protocol.json:ro
+      - ./protocol.json:/opt/node2/neo-cli/protocol.json:ro
+      - ./protocol.json:/opt/node3/neo-cli/protocol.json:ro
+      - ./protocol.json:/opt/node4/neo-cli/protocol.json:ro
+      - ./privnet.json:/neo-python/neo/data/protocol.privnet.json:ro
       - ./scripts:/scripts:ro
       - ${CONTRACT_FILE_LOCAL}:${CONTRACT_FILE}:ro
     command: /scripts/run.sh
