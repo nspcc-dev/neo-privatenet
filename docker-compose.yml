@@ -31,7 +31,7 @@ services:
       - .env
     image: 'registry.gitlab.com/cityofzion/neo-scan/sync:45714484-master'
   neo-postgres:
-    image: circleci/postgres:10-alpine-ram
+    image: postgres:11.1-alpine
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
