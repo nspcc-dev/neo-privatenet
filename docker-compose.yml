@@ -20,8 +20,18 @@ services:
       - PORT=4000
     env_file:
       - .env
+  neo-scan-sync:
+    container_name: neo-scan-sync
+    depends_on:
+      neo-privnet:
+        condition: service_healthy
+      neo-postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    image: 'registry.gitlab.com/cityofzion/neo-scan/sync:45714484-master'
   neo-postgres:
-    image: circleci/postgres:10-alpine-ram
+    image: postgres:11.1-alpine
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
